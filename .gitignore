@@ -1,0 +1,10 @@
+datasets
+*.gif
+*.png
+*.mp4
+*.bmp
+*.pt
+fairseq
+imagen-pytorch
+video-diffusion-pytorch
+imagen-span-070823
