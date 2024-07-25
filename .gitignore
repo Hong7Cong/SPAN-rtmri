@@ -4,7 +4,9 @@ datasets
 *.mp4
 *.bmp
 *.pt
+*.pth
 fairseq
 imagen-pytorch
 video-diffusion-pytorch
 imagen-span-070823
+checkpoints
