@@ -3,15 +3,17 @@ from imagen_pytorch import Unet3D, ElucidatedImagen, ImagenTrainer
 from utils import gif75speaker
 import numpy as np
 from torchvision import transforms
-# import argparse
+import argparse
 
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--config", type=str)
-# parser.add_argument('--local-rank', default=-1, type=int,
-#                     help='node rank for distributed training')
-# parser.add_argument("--use_amp", action='store_true', default=False)
-# opt = parser.parse_args()
-# print(opt)
+parser = argparse.ArgumentParser()
+parser.add_argument("--image_sizes", type=int, default=64)
+parser.add_argument("--text_embed_dim", type=int, default=1024)
+parser.add_argument("--from_pretrained", type=str, default='')
+parser.add_argument("--audio_path", type=str, default='./datasets/audios-eng-pho')
+parser.add_argument("--image_path", type=str, default='./datasets/gifs')
+parser.add_argument("--use_amp", action='store_true', default=False)
+opt = parser.parse_args()
+print(opt)
 
 
 unet1 = Unet3D(dim = 64, dim_mults = (1, 2, 4, 8)).cuda()
@@ -54,7 +56,7 @@ imagen = ElucidatedImagen(
 # for this example, only training unet 1
 FROM_PRETRAIN = False
 # imagen.load_state_dict(torch.load('/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/imagen-video-audio960h-IgnoreTime-169'))
-imagen.load_state_dict(torch.load('/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/imagen-video-audio60pho-IgnoreTime-10frames-798'))
+imagen.load_state_dict(torch.load('/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/imagen-video-audio60phoAVG-IgnoreTime-10frames-120'))
 imagen.train()
 
 trainer = ImagenTrainer(imagen,
@@ -62,10 +64,10 @@ trainer = ImagenTrainer(imagen,
     dl_tuple_output_keywords_names = ('images', 'text_embeds', 'cond_video_frames')
 ).cuda()
 
-(gifs, aud_emb, cond_video_frames) = next(iter(gif75speaker(img_per_gif=10, audio_path = './datasets/audios-eng-pho')))
+(gifs, aud_emb, cond_video_frames) = next(iter(gif75speaker(img_per_gif=10, audio_path = './datasets/audios-eng-pho', audio_pooling=True)))
 # you can also ignore time when training on video initially, shown to improve results in video-ddpm paper. eventually will make the 3d unet trainable with either images or video. research shows it is essential (with current data regimes) to train first on text-to-image. probably won't be true in another decade. all big data becomes small data
 # for i in range(1,200000):
-trainer.add_train_dataset(gif75speaker(audio_path = './datasets/audios-eng-pho'), batch_size = 2)
+trainer.add_train_dataset(gif75speaker(audio_path = './datasets/audios-eng-pho', audio_pooling=True), batch_size = 2)
 
 for i in range(100000):
     loss = trainer.train_step(unet_number = 1, max_batch_size = 2, ignore_time = False)
@@ -80,5 +82,5 @@ for i in range(100000):
         imgs = torch.transpose(videos[0], 0, 1)
         imgs = [transforms.ToPILImage()(img) for img in imgs]
         # duration is the number of milliseconds between frames; this is 40 frames per second
-        imgs[0].save(f'./gif_samples/gif-sample-audio60pho-notIgnoreTime-10frames-{i // 200}.gif', save_all=True, append_images=imgs[1:], duration=20, loop=0)
-        torch.save(imagen.state_dict(), f'./checkpoints/imagen-video-audio60pho-notIgnoreTime-10frames-{i // 200}')
+        imgs[0].save(f'./gif_samples/gif-sample-notaudio60phoAVG-noIgnoreTime-10frames-{i // 200}.gif', save_all=True, append_images=imgs[1:], duration=20, loop=0)
+        torch.save(imagen.state_dict(), f'./checkpoints/imagen-video-notaudio60phoAVG-noIgnoreTime-10frames-{i // 200}')

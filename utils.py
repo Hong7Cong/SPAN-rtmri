@@ -67,12 +67,13 @@ def create_audio_emds(in_path = '/mnt/c/Users/PCM/Dropbox/span/sub006/2drt/audio
         torch.save(o.last_hidden_state, f'{out_path}/{name}.pt')
 
 class gif75speaker(Dataset):
-    def __init__(self, image_path = './datasets/gifs', audio_path = './datasets/audios', transform=None, target_transform=None, img_per_gif = 10):
+    def __init__(self, image_path = './datasets/gifs', audio_path = './datasets/audios', transform=None, target_transform=None, img_per_gif = 10, audio_pooling=False):
         self.gifs = glob.glob(f'{image_path}/*')  # Could be a list: ['./train/input/image_1.bmp', './train/input/image_2.bmp', ...]
         self.audios = audio_path #glob.glob(f'{audio_path}/*')  # Could be a nested list: [['./train/GT/image_1_1.bmp', './train/GT/image_1_2.bmp', ...], ['./train/GT/image_2_1.bmp', './train/GT/image_2_2.bmp', ...]]
         self.transform = transform
         self.target_transform = target_transform
         self.img_per_gif = img_per_gif
+        self.audio_pooling = audio_pooling
 
     def __getitem__(self, index):
         gifs_name = self.gifs[index].split('/')[-1].split('.')[0].split('-')
@@ -83,6 +84,8 @@ class gif75speaker(Dataset):
 
         aud_embs = torch.load(f'{self.audios}/{gifs_name[0]}.pt')
         aud_emb = aud_embs[:,int(gifs_name[-1]):int(gifs_name[-1]) + self.img_per_gif,:]
+        if(self.audio_pooling):
+            aud_emb = torch.mean(aud_emb, axis=0).unsqueeze(0)
         gif = torch.transpose(torch.stack([transforms.ToTensor()(i) for i in gif[:self.img_per_gif]]), 0,1)
         return (gif, aud_emb[0], gif[:,0:2,:])
 
