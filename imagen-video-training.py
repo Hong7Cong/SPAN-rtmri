@@ -9,8 +9,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--image_sizes", type=int, default=64)
 parser.add_argument("--text_embed_dim", type=int, default=1024)
 parser.add_argument("--from_pretrained", type=str, default='')
-parser.add_argument("--audio_path", type=str, default='./datasets/audios-eng-pho')
-parser.add_argument("--image_path", type=str, default='./datasets/gifs')
+parser.add_argument("--audio_path", type=str, default='./datasets/audios-eng-pho', help="path to pre-extracted")
+parser.add_argument("--gif_path", type=str, default='./datasets/gifs', help="path to processed gifs for training")
 parser.add_argument("--use_amp", action='store_true', default=False)
 opt = parser.parse_args()
 print(opt)
@@ -22,9 +22,9 @@ unet2 = Unet3D(dim = 64, dim_mults = (1, 2, 4, 8)).cuda()
 # elucidated imagen, which contains the unets above (base unet and super resoluting ones)
 
 imagen = ElucidatedImagen(
-    text_embed_dim=1024,
+    text_embed_dim=opt.text_embed_dim,
     unets = (unet1, unet2),
-    image_sizes = (64, 64),
+    image_sizes = (opt.image_sizes, opt.image_sizes),
     random_crop_sizes = (None, 16),
     temporal_downsample_factor = (1, 1),        # in this example, the first unet would receive the video temporally downsampled by 2x
     num_sample_steps = 10,
@@ -55,19 +55,20 @@ imagen = ElucidatedImagen(
 # feed images into imagen, training each unet in the cascade
 # for this example, only training unet 1
 FROM_PRETRAIN = False
-# imagen.load_state_dict(torch.load('/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/imagen-video-audio960h-IgnoreTime-169'))
-imagen.load_state_dict(torch.load('/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/imagen-video-audio60phoAVG-IgnoreTime-10frames-120'))
-imagen.train()
+if(FROM_PRETRAIN):
+    # imagen.load_state_dict(torch.load('/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/imagen-video-audio960h-IgnoreTime-169'))
+    imagen.load_state_dict(torch.load('/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/imagen-video-audio60phoAVG-IgnoreTime-10frames-120'))
+    imagen.train()
 
 trainer = ImagenTrainer(imagen,
     split_valid_from_train = True, # whether to split the validation dataset from the training
     dl_tuple_output_keywords_names = ('images', 'text_embeds', 'cond_video_frames')
 ).cuda()
 
-(gifs, aud_emb, cond_video_frames) = next(iter(gif75speaker(img_per_gif=10, audio_path = './datasets/audios-eng-pho', audio_pooling=True)))
+(gifs, aud_emb, cond_video_frames) = next(iter(gif75speaker(image_path = opt.gif_path, img_per_gif=10, audio_path = opt.audio_path, audio_pooling=True)))
 # you can also ignore time when training on video initially, shown to improve results in video-ddpm paper. eventually will make the 3d unet trainable with either images or video. research shows it is essential (with current data regimes) to train first on text-to-image. probably won't be true in another decade. all big data becomes small data
 # for i in range(1,200000):
-trainer.add_train_dataset(gif75speaker(audio_path = './datasets/audios-eng-pho', audio_pooling=True), batch_size = 2)
+trainer.add_train_dataset(gif75speaker(image_path = opt.gif_path, audio_path = opt.audio_path, audio_pooling=True), batch_size = 2)
 
 for i in range(100000):
     loss = trainer.train_step(unet_number = 1, max_batch_size = 2, ignore_time = False)
