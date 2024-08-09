@@ -1,10 +1,12 @@
 # SPAN-rtmri Audio-Guided Diffusion Model
 
 ## Setup enviroment
+```
 conda env create --file=environments.yml
 conda activate genai
+```
 
-## Prepare dataset
+## Preparing dataset
 Create preprocessed dataset folder
 ```
 mkdir ./datasets/preprocessed_dataset/
