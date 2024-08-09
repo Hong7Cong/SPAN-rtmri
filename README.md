@@ -18,9 +18,13 @@ python create_audio_embeddings.py
                 --model_size large
                 --pretrain_on None
 ```
-Train diffusion model
+Train diffusion model, save models to ./checkpoints/ and save samples per epoch to ./gif_samples
 ```
 python imagen-video-training.py 
---audio_path ./datasets/preprocessed_dataset/audio_embs 
---gif_path ./datasets/preprocessed_dataset/train
+                --audio_path ./datasets/preprocessed_dataset/audio_embs 
+                --audio_embed_dim 1024
+                --from_pretrained False
+                --ignore_time False
+                --audio_pooling False
+                --gif_path ./datasets/preprocessed_dataset/train
 ```

@@ -7,7 +7,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--image_sizes", type=int, default=64)
-parser.add_argument("--text_embed_dim", type=int, default=1024)
+parser.add_argument("--audio_embed_dim", type=int, default=1024)
 parser.add_argument("--from_pretrained", action='store_true', default=False)
 parser.add_argument("--ignore_time", action='store_true', default=False)
 parser.add_argument("--audio_pooling", action='store_true', default=False)
@@ -25,7 +25,7 @@ unet2 = Unet3D(dim = 64, dim_mults = (1, 2, 4, 8)).cuda()
 
 # elucidated imagen, which contains the unets above (base unet and super resoluting ones)
 imagen = ElucidatedImagen(
-    text_embed_dim=opt.text_embed_dim,
+    text_embed_dim=opt.audio_embed_dim,
     unets = (unet1, unet2),
     image_sizes = (opt.image_sizes, opt.image_sizes),
     random_crop_sizes = (None, 16),

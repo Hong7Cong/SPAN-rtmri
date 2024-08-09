@@ -23,8 +23,8 @@ def get_length(filename):
     return float(result.stdout)
 
 target_dir = opt.target_dir
-subprocess.call(f'rm -rf {opt.target_dir}', shell=True)
-subprocess.call(f'mkdir {opt.target_dir}', shell=True)
+# subprocess.call(f'rm -rf {opt.target_dir}', shell=True)
+# subprocess.call(f'mkdir {opt.target_dir}', shell=True)
 subprocess.call(f'rm -rf {opt.target_dir}/train', shell=True)
 subprocess.call(f'rm -rf {opt.target_dir}/test', shell=True)
 subprocess.call(f'mkdir {opt.target_dir}/train', shell=True)
