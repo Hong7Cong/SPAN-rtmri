@@ -21,14 +21,20 @@ if(opt.model_size not in ["large", "base"]):
 if(opt.pretrain_on not in ["phoneme", "no", "None"]):
     assert False, f"No pretrain_on {opt.model_name} found, try phoneme or None instead"
 
-if(opt.model_name == "Wav2Vec2" and opt.pretrain_on != "phoneme"):
+if(opt.model_name == "Wav2Vec2" and opt.pretrain_on != "phoneme" and opt.model_size == 'large'):
     model_name = "facebook/wav2vec2-large-lv60"
-elif(opt.model_name == "Wav2Vec2" and opt.pretrain_on == "phoneme"):
+elif(opt.model_name == "Wav2Vec2" and opt.pretrain_on == "phoneme" and opt.model_size == 'large'):
     model_name = "facebook/wav2vec2-lv-60-espeak-cv-ft"
-elif(opt.model_name == "Hubert"):
+elif(opt.model_name == "Wav2Vec2" and opt.model_size == 'base'):
+    model_name = "facebook/facebook/wav2vec2-base"
+elif(opt.model_name == "Hubert" and opt.model_size == 'large'):
     model_name = "facebook/hubert-large-ll60k"
-elif(opt.model_name == "WaveLM"):
+elif(opt.model_name == "Hubert" and opt.model_size == 'base'):
+    model_name = "hubert-base-ls960"
+elif(opt.model_name == "WaveLM" and opt.model_size == 'large'):
     model_name = "microsoft/wavlm-large"
+elif(opt.model_name == "WaveLM" and opt.model_size == 'base'):
+    model_name = "microsoft/wavlm-base"
 else:
     assert False, "No model found"
 
