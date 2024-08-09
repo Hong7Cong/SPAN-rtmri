@@ -1,8 +1,14 @@
-# SPAN-rtmri
+# SPAN-rtmri Audio-Guided Diffusion Model
 
 ## Setup enviroment
+conda env create --file=environments.yml
+conda activate genai
 
 ## Prepare dataset
+Create preprocessed dataset folder
+```
+mkdir ./datasets/preprocessed_dataset/
+```
 Create gifs from original SPAN dataset for training and test
 ```
 python create_gifs_dataset.py
@@ -18,6 +24,8 @@ python create_audio_embeddings.py
                 --model_size large
                 --pretrain_on None
 ```
+
+## Training
 Train diffusion model, save models to ./checkpoints/ and save samples per epoch to ./gif_samples
 ```
 python imagen-video-training.py 
