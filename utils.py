@@ -91,6 +91,10 @@ class gif75speaker(Dataset):
 
     def __len__(self):
         return len(self.gifs)
+
+    def get_names(self, index):
+        gifs_name = self.gifs[index].split('/')[-1].split('.')[0]
+        return gifs_name
     
     def load_frames(self, image: Image, mode='RGB'):
         # ret = 
