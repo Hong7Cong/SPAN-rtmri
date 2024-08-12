@@ -6,6 +6,7 @@ datasets
 *.pt
 *.pth
 fairseq
+common_metrics_on_video_quality
 imagen-pytorch
 video-diffusion-pytorch
 imagen-span-070823
