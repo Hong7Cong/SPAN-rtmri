@@ -5,6 +5,10 @@ datasets
 *.bmp
 *.pt
 *.pth
+*.bmp
+data_processing.ipynb
+audio2image.ipynb
+data_processing.ipynb
 fairseq
 common_metrics_on_video_quality
 imagen-pytorch
