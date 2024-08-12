@@ -9,6 +9,8 @@ datasets
 data_processing.ipynb
 audio2image.ipynb
 data_processing.ipynb
+imagen-video.ipynb
+TEST.ipynb
 fairseq
 common_metrics_on_video_quality
 imagen-pytorch
