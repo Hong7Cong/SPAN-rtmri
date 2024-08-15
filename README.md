@@ -19,12 +19,7 @@ python create_gifs_dataset.py
 ```
 Create audio embeddings from a pretrained model. Each pretrained model should have seperated target_dir folder.
 ```
-python create_audio_embeddings.py
-                --path2span /mnt/c/Users/PCM/Dropbox/span
-                --target_dir ./datasets/preprocessed_dataset/audio_embs
-                --model_name Wav2Vec2
-                --model_size large
-                --pretrain_on None
+python create_audio_embeddings.py --path2span /mnt/c/Users/PCM/Dropbox/span --target_dir ./datasets/preprocessed_dataset/hubert-large --model_name Hubert --model_size large --pretrain_on None
 ```
 
 ## Training

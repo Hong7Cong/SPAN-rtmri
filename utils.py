@@ -8,7 +8,7 @@ import torch
 from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2Model
 from PIL import Image, ImageSequence
 import numpy as np
-
+import random
 data_transforms = {
     'train': transforms.Compose([
         transforms.RandomResizedCrop(64),
@@ -66,7 +66,70 @@ def create_audio_emds(in_path = '/mnt/c/Users/PCM/Dropbox/span/sub006/2drt/audio
             o = model(i.input_values)
         torch.save(o.last_hidden_state, f'{out_path}/{name}.pt')
 
+def add_noise_video(sample_img, image_sizes = (64, 64), timesteps=1000, times = 100):
+    ret = []
+    for i in range(10):
+        x_noisy, _, _, _ = add_noise(sample_img[:,:,i,:].cpu(), image_sizes = image_sizes, timesteps=timesteps, times = times)
+        ret.append(x_noisy)
+    return torch.stack(ret, axis=2)
+
 class gif75speaker(Dataset):
+    def __init__(self, image_path = './datasets/gifs', audio_path = './datasets/audios', transform=None, target_transform=None, img_per_gif = 10, audio_pooling=False, mode='train', seed=2024):
+        self.gifs = glob.glob(f'{image_path}/*')  # Could be a list: ['./train/input/image_1.bmp', './train/input/image_2.bmp', ...]
+        if(mode == 'train'):
+            pass
+        elif(mode == 'test-unseensubject'):
+            self.gifs = glob.glob(f'{image_path}/sub0[6-7][1-9]*')
+        elif(mode == 'test-unseenaudio'):
+            self.gifs = glob.glob(f'{image_path}/*_topic[2-5]_*')
+        elif(mode == 'test-unseenboth'):
+            self.gifs = glob.glob(f'{image_path}/sub0[6-7][1-9]*_topic[1-5]_*')
+        else:
+            assert False, f"No mode {mode} Found. Try [train, test-unseensubject, test-unseenaudio, test-unseenboth]"
+        random.Random(seed).shuffle(self.gifs)
+        self.audios = audio_path #glob.glob(f'{audio_path}/*')  # Could be a nested list: [['./train/GT/image_1_1.bmp', './train/GT/image_1_2.bmp', ...], ['./train/GT/image_2_1.bmp', './train/GT/image_2_2.bmp', ...]]
+        self.transform = transform
+        self.target_transform = target_transform
+        self.img_per_gif = img_per_gif
+        self.audio_pooling = audio_pooling
+
+    def __getitem__(self, index):
+        gifs_name = self.gifs[index].split('/')[-1].split('.')[0].split('-')
+
+        with Image.open(self.gifs[index]) as im:
+            gif = self.load_frames(im)
+        # gif = Image.open(self.images[index])
+
+        aud_embs = torch.load(f'{self.audios}/{gifs_name[0]}.pt')
+        aud_emb = aud_embs[:,int(gifs_name[-1]):int(gifs_name[-1]) + self.img_per_gif,:]
+        if(self.audio_pooling):
+            aud_emb = torch.mean(aud_emb, axis=0).unsqueeze(0)
+        gif = torch.transpose(torch.stack([transforms.ToTensor()(i) for i in gif[:self.img_per_gif]]), 0,1)
+        # low_res = add_noise_video(gif.unsqueeze(0), image_sizes = (64, 64), timesteps=1000, times = 200)
+        return (gif, aud_emb[0], gif[:,0:1,:])
+
+    def __len__(self):
+        return len(self.gifs)
+
+    def get_names(self, index):
+        gifs_name = self.gifs[index].split('/')[-1].split('.')[0]
+        return gifs_name
+    
+    def get_path(self, index):
+        gifs_name = self.gifs[index]#.split('/')[-1].split('.')[0]
+        return gifs_name
+    
+    def load_frames(self, image: Image, mode='RGB'):
+        # ret = 
+        # if self.transform:
+        #     gif = self.transform(gif)
+        return np.array([
+            np.array(frame.convert(mode))
+            for frame in ImageSequence.Iterator(image)
+        ])
+    
+
+class gif75speaker_res(Dataset):
     def __init__(self, image_path = './datasets/gifs', audio_path = './datasets/audios', transform=None, target_transform=None, img_per_gif = 10, audio_pooling=False):
         self.gifs = glob.glob(f'{image_path}/*')  # Could be a list: ['./train/input/image_1.bmp', './train/input/image_2.bmp', ...]
         self.audios = audio_path #glob.glob(f'{audio_path}/*')  # Could be a nested list: [['./train/GT/image_1_1.bmp', './train/GT/image_1_2.bmp', ...], ['./train/GT/image_2_1.bmp', './train/GT/image_2_2.bmp', ...]]
@@ -87,7 +150,8 @@ class gif75speaker(Dataset):
         if(self.audio_pooling):
             aud_emb = torch.mean(aud_emb, axis=0).unsqueeze(0)
         gif = torch.transpose(torch.stack([transforms.ToTensor()(i) for i in gif[:self.img_per_gif]]), 0,1)
-        return (gif, aud_emb[0], gif[:,0:2,:])
+        low_res = add_noise_video(gif.unsqueeze(0), image_sizes = (64, 64), timesteps=1000, times = 200)
+        return (gif, aud_emb[0], low_res[0])
 
     def __len__(self):
         return len(self.gifs)
@@ -104,7 +168,6 @@ class gif75speaker(Dataset):
             np.array(frame.convert(mode))
             for frame in ImageSequence.Iterator(image)
         ])
-    
 
 import torch
 from torch import nn
@@ -138,3 +201,25 @@ def add_noise(images, image_sizes = (64, 64), timesteps=1000, times = 500):
         noise_schedulers.append(noise_scheduler)
     x_noisy, log_snr, alpha, sigma = noise_scheduler.q_sample(x_start = x_start, t = times, noise = noise)
     return x_noisy, log_snr, alpha, sigma
+
+def get_path_of_pretrained(AUDIO_EMB, POOLING):
+    path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/lv60/ImagenVideo-Modelwav2vec2-l60-PoolingFalse-IgnoreTimeFalse-TwoStepTrue-100'
+    emb_len = 1024
+    if(AUDIO_EMB == 'wav2vec2-l60-pho'):
+        if(POOLING):
+            path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/pooling/ImagenVideo-Modelwav2vec2-l60-pho-PoolingTrue-IgnoreTimeFalse-TwoStepTrue-100'
+        else:
+            path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/phoneme/ImagenVideo-Modelwav2vec2-l60-pho-PoolingFalse-IgnoreTimeFalse-TwoStepTrue-100'
+    elif(AUDIO_EMB == 'wav2vec2-l60'):
+        path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/lv60/ImagenVideo-Modelwav2vec2-l60-PoolingFalse-IgnoreTimeFalse-TwoStepTrue-100'
+    elif(AUDIO_EMB == 'wav2vec2-base'):
+        path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/base/ImagenVideo-Modelwav2vec2-base-PoolingFalse-IgnoreTimeFalse-TwoStepFalse-100'
+        emb_len = 768
+    elif(AUDIO_EMB == 'hubert-base'):
+        path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/hubert/base/ImagenVideo-Modelhubert-base-PoolingFalse-IgnoreTimeFalse-TwoStepFalse-96'
+        emb_len = 768
+    elif(AUDIO_EMB == 'hubert-large'):
+        path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/hubert/large/ImagenVideo-Modelhubert-large-PoolingFalse-IgnoreTimeFalse-TwoStepTrue-100'
+    else:
+        assert False, "No AUDIO_EMB name found! Try different name"
+    return path, emb_len
