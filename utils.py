@@ -1,4 +1,4 @@
-from PIL import Image
+# from PIL import Image
 from torch.utils.data import Dataset
 import glob
 from torchvision import transforms
@@ -9,6 +9,10 @@ from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2Model
 from PIL import Image, ImageSequence
 import numpy as np
 import random
+# import glob
+from PIL import Image, ImageSequence
+# from torchvision import transforms
+
 data_transforms = {
     'train': transforms.Compose([
         transforms.RandomResizedCrop(64),
@@ -111,6 +115,10 @@ class gif75speaker(Dataset):
     def __len__(self):
         return len(self.gifs)
 
+    def get_start_index(self, index):
+        gifs_name = self.gifs[index].split('/')[-1].split('.')[0].split('-')
+        return int(gifs_name[-1])
+        
     def get_names(self, index):
         gifs_name = self.gifs[index].split('/')[-1].split('.')[0]
         return gifs_name
@@ -118,6 +126,11 @@ class gif75speaker(Dataset):
     def get_path(self, index):
         gifs_name = self.gifs[index]#.split('/')[-1].split('.')[0]
         return gifs_name
+    
+    def get_audio_emb(self, index):
+        gifs_name = self.gifs[index].split('/')[-1].split('.')[0].split('-')
+        aud_embs = torch.load(f'{self.audios}/{gifs_name[0]}.pt')
+        return aud_embs
     
     def load_frames(self, image: Image, mode='RGB'):
         # ret = 
@@ -209,7 +222,7 @@ def get_path_of_pretrained(AUDIO_EMB, POOLING):
         if(POOLING):
             path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/pooling/ImagenVideo-Modelwav2vec2-l60-pho-PoolingTrue-IgnoreTimeFalse-TwoStepTrue-100'
         else:
-            path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/phoneme/ImagenVideo-Modelwav2vec2-l60-pho-PoolingFalse-IgnoreTimeFalse-TwoStepTrue-100'
+            path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/phoneme/ImagenVideo-Modelwav2vec2-l60-pho-PoolingFalse-IgnoreTimeFalse-TwoStepFalse-100'
     elif(AUDIO_EMB == 'wav2vec2-l60'):
         path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wav2vec2/lv60/ImagenVideo-Modelwav2vec2-l60-PoolingFalse-IgnoreTimeFalse-TwoStepTrue-100'
     elif(AUDIO_EMB == 'wav2vec2-base'):
@@ -220,6 +233,34 @@ def get_path_of_pretrained(AUDIO_EMB, POOLING):
         emb_len = 768
     elif(AUDIO_EMB == 'hubert-large'):
         path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/hubert/large/ImagenVideo-Modelhubert-large-PoolingFalse-IgnoreTimeFalse-TwoStepTrue-100'
+    elif(AUDIO_EMB == 'wavlm-base'):
+        path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wavlm/base/ImagenVideo-Modelwavlm-base-PoolingFalse-IgnoreTimeFalse-TwoStepFalse-100'
+        emb_len = 768
+    elif(AUDIO_EMB == 'wavlm-large'):
+        path = '/mnt/c/Users/PCM/Documents/GitHub/SPAN-rtmri/checkpoints/wavlm/large/ImagenVideo-Modelwavlm-large-PoolingFalse-IgnoreTimeFalse-TwoStepFalse-100'
     else:
         assert False, "No AUDIO_EMB name found! Try different name"
     return path, emb_len
+
+
+def load_frames(image: Image, mode='RGB'):
+    # ret = 
+    # if self.transform:
+    #     gif = self.transform(gif)
+    return np.array([
+        np.array(frame.convert(mode))
+        for frame in ImageSequence.Iterator(image)
+    ])
+
+def load_frames_tensor(im: Image, mode='RGB', video_len=10):
+    return torch.stack([transforms.ToTensor()(np.array(frame.convert('RGB'))) for frame in ImageSequence.Iterator(im)])[:video_len]
+
+def get_videos_from_folder(paths):
+    synthetic_batch = []
+    for names in paths:
+        with Image.open(names) as im:
+            gif = load_frames_tensor(im)
+            # gif = load_frames_tensor(im)
+            synthetic_batch.append(gif)
+    synthetic_batch = torch.stack(synthetic_batch)
+    return synthetic_batch
